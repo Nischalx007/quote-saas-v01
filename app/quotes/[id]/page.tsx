@@ -29,107 +29,153 @@ export default function QuoteDetailPage() {
   const [quote, setQuote] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  const loadQuote = async () => {
-    if (!params.id) return;
+  useEffect(() => {
+    const loadQuote = async () => {
+      if (!params.id) return;
+
+      try {
+        const response = await fetch('/api/quotes', {
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          throw new Error('Could not load quotations');
+        }
+
+        const result = await response.json();
+
+        const foundQuote = result.quotations?.find(
+          (item: Quotation) =>
+            String(item.id) === String(params.id)
+        );
+
+        setQuote(foundQuote || null);
+      } catch (error) {
+        console.error('Could not load quotation', error);
+        setQuote(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadQuote();
+  }, [params.id]);
+
+  const updateStatus = async (newStatus: string) => {
+    if (!quote) return;
 
     try {
       const response = await fetch('/api/quotes', {
-        cache: 'no-store',
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: quote.id,
+          status: newStatus,
+        }),
       });
-
-      if (!response.ok) {
-        throw new Error('Could not load quotations');
-      }
 
       const result = await response.json();
 
-      const foundQuote = result.quotations?.find(
-        (item: Quotation) => String(item.id) === String(params.id)
-      );
+      if (!response.ok) {
+        alert(result.error || 'Could not update status');
+        return;
+      }
 
-      setQuote(foundQuote || null);
-    } catch (error) {
-      console.error('Could not load quotation', error);
-      setQuote(null);
-    } finally {
-      setLoading(false);
+      setQuote(result.quotation);
+      alert(`Quotation marked as ${newStatus}`);
+    } catch {
+      alert('Something went wrong');
     }
   };
 
-  loadQuote();
-}, [params.id]);
-  
-const updateStatus = async (newStatus: string) => {
-  if (!quote) return;
+  const duplicateQuote = async () => {
+    if (!quote) return;
 
-  try {
-    const response = await fetch('/api/quotes', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: quote.id,
-        status: newStatus,
-      }),
-    });
+    try {
+      const newQuoteNumber = `${quote.quote_number}-COPY`;
 
-    const result = await response.json();
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quoteNumber: newQuoteNumber,
+          customerName: quote.customer_name,
+          customerEmail: quote.customer_email,
+          customerPhone: quote.customer_phone,
+          customerCompany: quote.customer_company,
+          items: quote.items,
+          subtotal: quote.subtotal,
+          vat: quote.vat,
+          total: quote.total,
+        }),
+      });
 
-    if (!response.ok) {
-      alert(result.error || 'Could not update status');
-      return;
+      const result = await response.json();
+
+      if (!response.ok) {
+        alert(result.error || 'Could not duplicate quotation');
+        return;
+      }
+
+      alert('Quotation duplicated successfully');
+      window.location.href = '/quotes';
+    } catch {
+      alert('Something went wrong');
     }
+  };
 
-    setQuote(result.quotation);
-    alert(`Quotation marked as ${newStatus}`);
-  } catch {
-    alert('Something went wrong');
-  }
-};const duplicateQuote = async () => {
-  if (!quote) return;
+  const deleteQuote = async () => {
+    if (!quote) return;
 
-  try {
-    const newQuoteNumber = `${quote.quote_number}-COPY`;
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this quotation?'
+    );
 
-    const response = await fetch('/api/quotes', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        quoteNumber: newQuoteNumber,
-        customerName: quote.customer_name,
-        customerEmail: quote.customer_email,
-        items: quote.items,
-        subtotal: quote.subtotal,
-        vat: quote.vat,
-        total: quote.total,
-      }),
-    });
+    if (!confirmed) return;
 
-    const result = await response.json();
+    try {
+      const response = await fetch('/api/quotes', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: quote.id,
+        }),
+      });
 
-    if (!response.ok) {
-      alert(result.error || 'Could not duplicate quotation');
-      return;
+      const result = await response.json();
+
+      if (!response.ok) {
+        alert(result.error || 'Could not delete quotation');
+        return;
+      }
+
+      alert('Quotation deleted successfully');
+      window.location.href = '/quotes';
+    } catch {
+      alert('Something went wrong');
     }
-
-    alert('Quotation duplicated successfully');
-
-    window.location.href = '/quotes';
-  } catch {
-    alert('Something went wrong');
-  }
-};
+  };
 
   if (loading) {
-    return <main style={{ padding: 40 }}>Loading quotation...</main>;
+    return (
+      <main style={{ padding: 40 }}>
+        Loading quotation...
+      </main>
+    );
   }
 
   if (!quote) {
-    return <main style={{ padding: 40 }}>Quotation not found.</main>;
+    return (
+      <main style={{ padding: 40 }}>
+        Quotation not found.
+      </main>
+    );
   }
 
   return (
@@ -141,15 +187,17 @@ const updateStatus = async (newStatus: string) => {
       }}
     >
       <a href="/quotes">← Back to quotations</a>
-<a
-  href={`/quotes/${quote.id}/edit`}
-  style={{
-    display: 'inline-block',
-    marginLeft: 20,
-  }}
->
-  Edit quotation
-</a>
+
+      <a
+        href={`/quotes/${quote.id}/edit`}
+        style={{
+          display: 'inline-block',
+          marginLeft: 20,
+        }}
+      >
+        Edit quotation
+      </a>
+
       <h1 style={{ marginTop: 30 }}>
         Quotation {quote.quote_number}
       </h1>
@@ -161,41 +209,44 @@ const updateStatus = async (newStatus: string) => {
       <p>
         <strong>Email:</strong> {quote.customer_email}
       </p>
-<p>
-  <strong>Phone:</strong> {quote.customer_phone}
-</p>
 
-<p>
-  <strong>Company:</strong> {quote.customer_company}
-</p>
+      <p>
+        <strong>Phone:</strong> {quote.customer_phone}
+      </p>
+
+      <p>
+        <strong>Company:</strong> {quote.customer_company}
+      </p>
 
       <p>
         <strong>Status:</strong> {quote.status}
       </p>
-<div
-  style={{
-    display: 'flex',
-    gap: 10,
-    flexWrap: 'wrap',
-    marginTop: 15,
-  }}
->
-  <button onClick={() => updateStatus('draft')}>
-    Draft
-  </button>
 
-  <button onClick={() => updateStatus('sent')}>
-    Sent
-  </button>
+      <div
+        style={{
+          display: 'flex',
+          gap: 10,
+          flexWrap: 'wrap',
+          marginTop: 15,
+        }}
+      >
+        <button onClick={() => updateStatus('draft')}>
+          Draft
+        </button>
 
-  <button onClick={() => updateStatus('accepted')}>
-    Accepted
-  </button>
+        <button onClick={() => updateStatus('sent')}>
+          Sent
+        </button>
 
-  <button onClick={() => updateStatus('rejected')}>
-    Rejected
-  </button>
-</div>
+        <button onClick={() => updateStatus('accepted')}>
+          Accepted
+        </button>
+
+        <button onClick={() => updateStatus('rejected')}>
+          Rejected
+        </button>
+      </div>
+
       <hr style={{ margin: '30px 0' }} />
 
       <h2>Items</h2>
@@ -222,11 +273,17 @@ const updateStatus = async (newStatus: string) => {
       ))}
 
       <div style={{ marginTop: 30 }}>
-        <p>Subtotal: AED {Number(quote.subtotal).toFixed(2)}</p>
+        <p>
+          Subtotal: AED {Number(quote.subtotal).toFixed(2)}
+        </p>
 
-        <p>VAT: AED {Number(quote.vat).toFixed(2)}</p>
+        <p>
+          VAT: AED {Number(quote.vat).toFixed(2)}
+        </p>
 
-        <h2>Total: AED {Number(quote.total).toFixed(2)}</h2>
+        <h2>
+          Total: AED {Number(quote.total).toFixed(2)}
+        </h2>
       </div>
 
       <button
@@ -240,17 +297,29 @@ const updateStatus = async (newStatus: string) => {
         Print / Save as PDF
       </button>
 
-<button
-  onClick={duplicateQuote}
-  style={{
-    marginTop: 25,
-    marginLeft: 10,
-    padding: '12px 20px',
-    cursor: 'pointer',
-  }}
->
-  Duplicate quotation
-</button>
+      <button
+        onClick={duplicateQuote}
+        style={{
+          marginTop: 25,
+          marginLeft: 10,
+          padding: '12px 20px',
+          cursor: 'pointer',
+        }}
+      >
+        Duplicate quotation
+      </button>
+
+      <button
+        onClick={deleteQuote}
+        style={{
+          marginTop: 25,
+          marginLeft: 10,
+          padding: '12px 20px',
+          cursor: 'pointer',
+        }}
+      >
+        Delete quotation
+      </button>
     </main>
   );
 }
