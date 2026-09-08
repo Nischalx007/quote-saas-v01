@@ -29,13 +29,19 @@ export default function QuoteDetailPage() {
   const [quote, setQuote] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadQuote();
-  }, []);
-
+useEffect(() => {
   const loadQuote = async () => {
+    if (!params.id) return;
+
     try {
-      const response = await fetch('/api/quotes');
+      const response = await fetch('/api/quotes', {
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not load quotations');
+      }
+
       const result = await response.json();
 
       const foundQuote = result.quotations?.find(
@@ -43,12 +49,17 @@ export default function QuoteDetailPage() {
       );
 
       setQuote(foundQuote || null);
-    } catch {
-      console.error('Could not load quotation');
+    } catch (error) {
+      console.error('Could not load quotation', error);
+      setQuote(null);
     } finally {
       setLoading(false);
     }
   };
+
+  loadQuote();
+}, [params.id]);
+  
 const updateStatus = async (newStatus: string) => {
   if (!quote) return;
 
