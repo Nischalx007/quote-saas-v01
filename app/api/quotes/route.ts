@@ -171,3 +171,40 @@ if (body.customerCompany !== undefined) updates.customer_company = body.customer
     );
   }
 }
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+
+    if (!body.id) {
+      return Response.json(
+        { error: 'Quotation ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await supabase
+      .from('quotations')
+      .delete()
+      .eq('id', body.id);
+
+    if (error) {
+      console.error(error);
+
+      return Response.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return Response.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return Response.json(
+      { error: 'Could not delete quotation' },
+      { status: 500 }
+    );
+  }
+}
