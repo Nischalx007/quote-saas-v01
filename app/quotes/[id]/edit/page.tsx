@@ -14,6 +14,8 @@ type Quotation = {
   quote_number: string;
   customer_name: string;
   customer_email: string;
+  customer_phone: string;
+  customer_company: string;
   items: LineItem[];
   subtotal: number;
   vat: number;
@@ -51,15 +53,15 @@ export default function EditQuotePage() {
       if (!foundQuote) {
         alert('Quotation not found');
         router.push('/quotes');
-        return;
-      }
+      return;
+}
 
-      setQuoteNumber(foundQuote.quote_number || '');
-      setCustomerName(foundQuote.customer_name || '');
-      setCustomerEmail(foundQuote.customer_email || '');
-      setCustomerPhone(result.quotation.customer_phone || '');
-      setCustomerCompany(result.quotation.customer_company || '');
-      setItems(foundQuote.items || []);
+setQuoteNumber(foundQuote.quote_number || '');
+setCustomerName(foundQuote.customer_name || '');
+setCustomerEmail(foundQuote.customer_email || '');
+setCustomerPhone(foundQuote.customer_phone || '');
+setCustomerCompany(foundQuote.customer_company || '');
+setItems(foundQuote.items || []);
 
       const savedSubtotal = Number(foundQuote.subtotal || 0);
       const savedVat = Number(foundQuote.vat || 0);
