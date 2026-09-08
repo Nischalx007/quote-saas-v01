@@ -39,11 +39,17 @@ export default function EditQuotePage() {
 
   useEffect(() => {
     loadQuote();
-  }, []);
+  }, [params.id]);
 
   const loadQuote = async () => {
+    if (!params.id) return;
     try {
-      const response = await fetch('/api/quotes');
+      const response = await fetch('/api/quotes', {
+  cache: 'no-store',
+});
+if (!response.ok) {
+  throw new Error('Could not load quotations');
+}
       const result = await response.json();
 
       const foundQuote = result.quotations?.find(
@@ -75,6 +81,7 @@ setItems(foundQuote.items || []);
       setLoading(false);
     }
   };
+  
 
   const subtotal = useMemo(() => {
     return items.reduce(
